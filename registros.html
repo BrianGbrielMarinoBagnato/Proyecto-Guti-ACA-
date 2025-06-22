@@ -6,7 +6,6 @@
     <title>Registros de Asistencia</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <!-- Mi adición: Incluyo jsPDF para la generación de PDFs (esto ya estaba) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         .app-header {
@@ -377,11 +376,9 @@
         <div class="modal-contenido">
             <div class="modal-header">
                 <h3 id="modal-titulo">Detalles de Asistencia</h3>
-                <!-- El botón de cerrar (X) se mantiene aquí arriba a la derecha -->
                 <button class="cerrar-modal" onclick="cerrarModal()">&times;</button>
             </div>
 
-            <!-- INICIO DE MODIFICACIÓN: BARRA DE ACCIONES CON BOTÓN PRINCIPAL Y MENÚ -->
             <div class="modal-actions-bar">
                 <button class="action-button-main" id="btnAccionesRegistro" onclick="toggleShareMenu(event)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -395,13 +392,7 @@
                     </svg>
                     Compartir
                 </button>
-                <!-- Menú de opciones de descarga/compartir -->
                 <div class="menu-opciones-descarga" id="menuOpcionesDescarga">
-                    <!-- Mi modificación: El botón de editar se quita de aquí y se pone en la tarjeta principal -->
-                    <!-- <button onclick="editarAsistenciaRegistro(); cerrarMenuOpciones();">
-                        <svg ... class="feather-edit"></svg>
-                        Editar Asistencia
-                    </button> -->
                     <button onclick="descargarYCompartir('pdf'); cerrarMenuOpciones();">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -433,7 +424,6 @@
                     </button>
                 </div>
             </div>
-            <!-- FIN DE MODIFICACIÓN -->
             <ul id="lista-detalles"></ul>
             <button class="modal-footer-button" onclick="cerrarModal()">Cerrar</button>
         </div>
@@ -444,6 +434,8 @@
         // Esto me permitirá acceder a ellos desde la función editarAsistenciaRegistro.
         let currentRecordClaseId = null;
         let currentRecordFecha = null;
+        // Mi adición: Variable global para almacenar el ID de la clase seleccionada desde la URL.
+        let claseIdSeleccionadaGlobal = null; // MI ADICIÓN
 
         // Datos de ejemplo para demostración (ESTO YA ESTABA)
         const demoData = {
@@ -469,6 +461,11 @@
                     { nombre: "Elena Vargas", estado: "Presente" },
                     { nombre: "David Jiménez", estado: "Presente" },
                     { nombre: "Laura Gómez", estado: "Tardanza" }
+                ],
+                // Mi adición: Agregamos una asistencia para el 21 de junio de 2025 para prueba
+                "asistencia_1_2025_06_21": [
+                    { nombre: "Alumno A", estado: "Presente" },
+                    { nombre: "Alumno B", estado: "Ausente" }
                 ]
             }
         };
@@ -490,6 +487,7 @@
             if (!fechaStr) return "";
             const partes = fechaStr.includes("_") ? fechaStr.split("_") : fechaStr.split("-");
             if (partes.length >= 3) {
+                // Asegurarse de que el orden sea YYYY_MM_DD o YYYY-MM-DD
                 const [y, m, d] = partes;
                 return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
             }
@@ -502,10 +500,10 @@
             return params.get(nombre);
         }
 
-        // Cargar registros desde localStorage (ESTO YA ESTABA)
+        // Cargar registros desde localStorage (ESTO YA ESTABA, MODIFICADA PARA USAR GLOBAL)
         function cargarRegistros() {
             const clases = JSON.parse(localStorage.getItem('clases')) || [];
-            const claseIdSeleccionada = obtenerParametro('claseId');
+            // const claseIdSeleccionada = obtenerParametro('claseId'); // MI MODIFICACIÓN: Esta línea ya no es necesaria aquí si usamos la global
             const contenedor = document.querySelector('.registros-container');
             contenedor.innerHTML = '';
 
@@ -532,7 +530,8 @@
                 const claseId = partes[1];
                 const fecha = partes.slice(2).join('_');
 
-                if (claseIdSeleccionada && claseId !== claseIdSeleccionada) return;
+                // MI MODIFICACIÓN: Usar la variable global aquí
+                if (claseIdSeleccionadaGlobal && claseId !== claseIdSeleccionadaGlobal) return;
 
                 const clase = clases.find(c => c.id == claseId);
                 if (clase) {
@@ -542,8 +541,7 @@
                     tarjeta.innerHTML = `
                         <p>Clase: <strong>${clase.nombre}</strong><br>Curso: ${clase.curso}</p>
                         <span>${formatearFecha(fecha)}</span>
-                        <!-- Mi adición: Botón de Editar Asistencia en la tarjeta de registro -->
-                        <button class="btn-editar-registro" 
+                        <button class="btn-editar-registro"
                                 onclick="editarAsistenciaDesdeRegistro('${claseId}', '${fecha}');">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             Editar
@@ -582,7 +580,7 @@
             // Esto me permitirá acceder a ellos desde la función editarAsistenciaRegistro.
             const partesClave = clave.split('_');
             currentRecordClaseId = partesClave[1];
-            currentRecordFecha = partesClave.slice(2).join('_'); // Formatoレンダー_MM_DD
+            currentRecordFecha = partesClave.slice(2).join('_'); // Formato YYYY_MM_DD
 
             const datos = JSON.parse(localStorage.getItem(clave));
             const lista = document.getElementById('lista-detalles');
@@ -638,12 +636,16 @@
             currentRecordFecha = null;
         }
 
-        // Inicializar (ESTO YA ESTABA)
+        // Inicializar (ESTO YA ESTABA, MODIFICADA PARA USAR GLOBAL)
         document.addEventListener('DOMContentLoaded', () => {
             if (!localStorage.getItem('clases')) {
                 cargarDatosDemo();
             }
 
+            // MI ADICIÓN: Obtener el claseId de la URL al cargar la página
+            claseIdSeleccionadaGlobal = obtenerParametro('claseId');
+
+            // Cargar los registros iniciales (posiblemente filtrados por claseId si viene en la URL)
             cargarRegistros();
 
             const modal = document.getElementById('modal');
@@ -667,13 +669,15 @@
 
             const inputFecha = document.getElementById('fecha');
             inputFecha.addEventListener('change', () => {
-                const fechaFiltro = inputFecha.value.replace(/-/g, '_');
-                filtrarRegistrosPorFecha(fechaFiltro);
+                const fechaFiltro = inputFecha.value.replace(/-/g, '_'); // Formato YYYY_MM_DD
+                // MI MODIFICACIÓN: Pasa la variable global claseIdSeleccionadaGlobal a la función de filtro
+                filtrarRegistrosPorFecha(fechaFiltro, claseIdSeleccionadaGlobal);
             });
         });
 
-        // NUEVA FUNCIÓN: Filtrar registros por fecha (ESTO YA ESTABA)
-        function filtrarRegistrosPorFecha(fecha) {
+        // NUEVA FUNCIÓN: Filtrar registros por fecha (ESTO YA ESTABA, MODIFICADA PARA RECIBIR CLASEID Y FILTRAR POR FECHA EXACTA)
+        // MI MODIFICACIÓN: Ahora la función acepta un segundo parámetro opcional para el ID de clase
+        function filtrarRegistrosPorFecha(fechaAFiltrar, claseIdOpcional = null) {
             const clases = JSON.parse(localStorage.getItem('clases')) || [];
             const contenedor = document.querySelector('.registros-container');
             contenedor.innerHTML = '';
@@ -699,9 +703,18 @@
             todasLasAsistencias.forEach(key => {
                 const partes = key.split('_');
                 const claseId = partes[1];
-                const fecha = partes.slice(2).join('_');
+                const fechaRegistro = partes.slice(2).join('_'); // MI MODIFICACIÓN: Renombrado para claridad
 
-                if (claseIdSeleccionada && claseId !== claseIdSeleccionada) return;
+                // MI MODIFICACIÓN: Aplicar el filtro por claseId si está presente
+                if (claseIdOpcional && claseId !== claseIdOpcional) {
+                    return;
+                }
+
+                // MI MODIFICACIÓN: Aplicar el filtro por fecha
+                // Si hay una fecha seleccionada en el input Y no coincide con la fecha del registro, saltar.
+                if (fechaAFiltrar && fechaRegistro !== fechaAFiltrar) {
+                    return;
+                }
 
                 const clase = clases.find(c => c.id == claseId);
                 if (clase) {
@@ -709,15 +722,14 @@
                     const tarjeta = document.createElement('div');
                     tarjeta.className = 'tarjeta-registro';
                     tarjeta.innerHTML = `
-                            <p>Clase: <strong>${clase.nombre}</strong><br>Curso: ${clase.curso}</p>
-                            <span>${formatearFecha(fecha)}</span>
-                            <!-- Mi adición: Botón de Editar Asistencia en la tarjeta de registro para filtros -->
-                            <button class="btn-editar-registro" 
-                                    onclick="editarAsistenciaDesdeRegistro('${claseId}', '${fecha}');">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                                Editar
-                            </button>
-                        `;
+                                <p>Clase: <strong>${clase.nombre}</strong><br>Curso: ${clase.curso}</p>
+                                <span>${formatearFecha(fechaRegistro)}</span>
+                                <button class="btn-editar-registro"
+                                        onclick="editarAsistenciaDesdeRegistro('${claseId}', '${fechaRegistro}');">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    Editar
+                                </button>
+                                `;
                     tarjeta.addEventListener('click', (event) => {
                         // Mi modificación: Solo abre el modal si no se hizo clic en el botón de editar.
                         if (!event.target.closest('.btn-editar-registro')) {
