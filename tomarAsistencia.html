@@ -138,12 +138,11 @@
         <p class="date" id="fechaActual"></p>
 
         <div id="listaAlumnosContainer">
-            <!-- Las tarjetas de alumnos se generarán aquí -->
         </div>
 
         <div class="botonera">
             <button onclick="cerrarRegistro()">GUARDAR<br>REGISTRO</button>
-            <button onclick="marcarTodos('P')">TODOS<br>PRESENTES</button>
+            <button id="btnMarcarTodos" onclick="manejarBotonMarcarTodos()">TODOS<br>PRESENTES</button>
         </div>
     </div>
 
@@ -152,6 +151,12 @@
         let currentClaseId = null;
         // Mi adición: Variable global para almacenar la fecha de asistencia actual si estamos editando.
         let currentAttendanceDate = null;
+
+        // MI ADICIÓN: Variable para controlar si la próxima acción del botón es marcar a todos PRESENTES o AUSENTES.
+        // true: la próxima acción será marcar 'P' (el botón dirá "TODOS AUSENTES")
+        // false: la próxima acción será marcar 'A' (el botón dirá "TODOS PRESENTES")
+        let proximaAccionSeraMarcarPresentes = false; // Inicialmente, el botón dirá "TODOS PRESENTES"
+
 
         // Función para obtener parámetro de la URL (ESTO YA ESTABA)
         function getQueryParam(param) {
@@ -276,14 +281,13 @@
 
 
                 card.innerHTML = `
-                <div class="photo" id="photo-${claseId}-${index}"> 
+                <div class="photo" id="photo-${claseId}-${index}">
                     ${fotoHtml}
-                    <input type="file" accept="image/*" class="photo-upload-input" 
-                           id="upload-input-${claseId}-${index}" style="display:none;">
-                </div> 
+                    <input type="file" accept="image/*" class="photo-upload-input"
+                            id="upload-input-${claseId}-${index}" style="display:none;">
+                </div>
                 <div class="card-content">
-                    <div class="name">${alumnoNombre}</div> <!-- Mi modificación: Uso alumnoNombre aquí -->
-                    <div class="radios">
+                    <div class="name">${alumnoNombre}</div> <div class="radios">
                         <div class="radio-group">
                             <label for="alumno${index}_p">P</label>
                             <input type="radio" id="alumno${index}_p" name="asistencia${index}" value="P" ${checkedP}>
@@ -344,6 +348,38 @@
             });
         }
 
+        // MI ADICIÓN: Función para inicializar el texto del botón al cargar la página
+        function inicializarBotonMarcarTodos() {
+            const botonTodos = document.getElementById('btnMarcarTodos');
+            if (botonTodos) {
+                // Si proximaAccionSeraMarcarPresentes es true, el botón dirá "TODOS AUSENTES" (porque al clicar se pondrán ausentes).
+                // Si proximaAccionSeraMarcarPresentes es false, el botón dirá "TODOS PRESENTES" (porque al clicar se pondrán presentes).
+                botonTodos.innerHTML = proximaAccionSeraMarcarPresentes ? 'TODOS<br>AUSENTES' : 'TODOS<br>PRESENTES';
+            }
+        }
+
+        // MI ADICIÓN: Función que encapsula la lógica del botón "Marcar Todos"
+        function manejarBotonMarcarTodos() {
+            // Si la próxima acción es marcar presentes, entonces el valor a aplicar es 'P'
+            // De lo contrario, el valor a aplicar es 'A'
+            const valorAMarcar = proximaAccionSeraMarcarPresentes ? 'P' : 'A';
+            marcarTodos(valorAMarcar);
+        }
+
+        // ✅ Marca todos los radios con un valor dado (P, A o T)
+        function marcarTodos(valor) {
+            const radios = document.querySelectorAll('input[type="radio"]');
+            radios.forEach(radio => radio.checked = (radio.value === valor));
+
+            // Mi modificación: Actualizar el estado de la próxima acción y el texto del botón
+            const botonTodos = document.getElementById('btnMarcarTodos');
+            if (botonTodos) {
+                proximaAccionSeraMarcarPresentes = !proximaAccionSeraMarcarPresentes; // Invierte el estado para la próxima vez
+                botonTodos.innerHTML = proximaAccionSeraMarcarPresentes ? 'TODOS<br>AUSENTES' : 'TODOS<br>PRESENTES';
+            }
+        }
+
+
         // Función principal al cargar la página
         document.addEventListener('DOMContentLoaded', async () => { // Mi modificación: Hago la función asíncrona para usar await
             const claseId = getQueryParam('claseId');
@@ -351,7 +387,8 @@
 
             // Mi adición: Almaceno el ID de clase en la variable global.
             currentClaseId = claseId;
-            // Mi adición: Almaceno la fecha de asistencia en la variable global si existe.
+            // Mi adición: Almaceno la fecha de asistencia en la variable global si estamos en modo edición.
+            // Si no hay fechaParam, currentAttendanceDate seguirá siendo null o se actualizará más abajo.
             currentAttendanceDate = fechaParam;
 
             if (!claseId) {
@@ -452,13 +489,12 @@
             document.getElementById('fechaActual').textContent = formatearFecha(fechaMostrar);
             // Mi modificación: Paso la lista de alumnos de la clase y la asistencia guardada (si la hay) a la función que genera las tarjetas.
             generarTarjetasAlumnos(clase.alumnos, asistenciaACargar, claseId); // Mi adición: Paso claseId aquí.
+
+            // MI ADICIÓN: Inicializa el texto del botón "Marcar Todos" después de cargar los alumnos
+            // y sus estados iniciales. Esto asegura que el botón muestre la acción correcta desde el principio.
+            inicializarBotonMarcarTodos();
         });
 
-        // ✅ Marca todos los radios con un valor dado (P, A o T) (ESTO YA ESTABA)
-        function marcarTodos(valor) {
-            const radios = document.querySelectorAll(`input[type="radio"][value="${valor}"]`);
-            radios.forEach(radio => radio.checked = true);
-        }
 
         // ✅ Cierra el registro y guarda la asistencia (ESTO YA ESTABA)
         function cerrarRegistro() {
@@ -506,7 +542,7 @@
                 return;
             }
 
-            // Mi modificación: Si estamos editando, uso la fecha de la variable global currentAttendanceDate. 
+            // Mi modificación: Si estamos editando, uso la fecha de la variable global currentAttendanceDate.
             // Si no, uso la fecha actual para un nuevo registro.
             const fecha = currentAttendanceDate || new Date().toISOString().split('T')[0].replace(/-/g, '_');
             const registros = [];
@@ -557,3 +593,4 @@
 </body>
 
 </html>
+```
