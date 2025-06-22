@@ -126,6 +126,76 @@
 
         /* FIN DE ESTILOS AÑADIDOS POR MI */
         /* ****************************************************************** */
+
+        /* ****************************************************************** */
+        /* MI ADICIÓN: ESTILOS PARA EL BOTÓN DE TOGGLE "TODOS PRESENTES/AUSENTES" */
+        #btnToggleTodos {
+            background-color: #4CAF50;
+            /* Verde por defecto para "TODOS PRESENTES" */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #btnToggleTodos.ausente {
+            background-color: #F44336;
+            /* Rojo para "TODOS AUSENTES" */
+        }
+
+        /* FIN MI ADICIÓN DE ESTILOS */
+        /* ****************************************************************** */
+
+
+        /* ****************************************************************** */
+        /* MI ADICIÓN: ESTILOS Y ANIMACIÓN PARA EL BOTÓN "GUARDAR REGISTRO" */
+        #btnGuardarRegistro {
+            /* Asumiendo que su estilo base ya está en style.css o lo definiremos aquí */
+            background-color: #1f2b4c;
+            /* Color oscuro similar a tu header o botones principales */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            /* Transición para color, sombra, etc. */
+            box-shadow: 0 0 5px rgba(31, 43, 76, 0.5);
+            /* Sombra sutil por defecto */
+        }
+
+        /* Animación de pulso para el brillo */
+        @keyframes pulse-shine {
+            0% {
+                box-shadow: 0 0 5px rgba(31, 43, 76, 0.5);
+                filter: brightness(100%);
+            }
+
+            50% {
+                box-shadow: 0 0 15px rgba(31, 43, 76, 0.8), 0 0 20px rgba(31, 43, 76, 0.6);
+                /* Más brillo y sombra */
+                filter: brightness(120%);
+                /* Ligeramente más brillante */
+            }
+
+            100% {
+                box-shadow: 0 0 5px rgba(31, 43, 76, 0.5);
+                filter: brightness(100%);
+            }
+        }
+
+        /* Clase para aplicar la animación */
+        #btnGuardarRegistro.shining {
+            animation: pulse-shine 2s infinite ease-in-out;
+            /* Animación continua */
+        }
+
+        /* FIN MI ADICIÓN DE ESTILOS Y ANIMACIÓN */
+        /* ****************************************************************** */
     </style>
 </head>
 
@@ -141,8 +211,8 @@
         </div>
 
         <div class="botonera">
-            <button onclick="cerrarRegistro()">GUARDAR<br>REGISTRO</button>
-            <button id="btnMarcarTodos" onclick="manejarBotonMarcarTodos()">TODOS<br>PRESENTES</button>
+            <button id="btnGuardarRegistro" onclick="cerrarRegistro()">GUARDAR<br>REGISTRO</button>
+            <button id="btnToggleTodos" onclick="toggleMarcarTodos()">TODOS<br>PRESENTES</button>
         </div>
     </div>
 
@@ -152,10 +222,11 @@
         // Mi adición: Variable global para almacenar la fecha de asistencia actual si estamos editando.
         let currentAttendanceDate = null;
 
-        // MI ADICIÓN: Variable para controlar si la próxima acción del botón es marcar a todos PRESENTES o AUSENTES.
-        // true: la próxima acción será marcar 'P' (el botón dirá "TODOS AUSENTES")
-        // false: la próxima acción será marcar 'A' (el botón dirá "TODOS PRESENTES")
-        let proximaAccionSeraMarcarPresentes = false; // Inicialmente, el botón dirá "TODOS PRESENTES"
+        // MI ADICIÓN: Variable para controlar el estado actual de los alumnos y la próxima acción del botón.
+        // true: Se acaba de marcar a todos como 'Presentes', por lo tanto, la próxima acción será marcar 'Ausentes'.
+        // false: Se acaba de marcar a todos como 'Ausentes' (o es el estado inicial), por lo tanto, la próxima acción será marcar 'Presentes'.
+        // Inicialmente, lo ponemos en 'false' para que el botón diga "TODOS PRESENTES" y al hacer click los marque presentes.
+        let esEstadoActualTodosPresentes = false;
 
 
         // Función para obtener parámetro de la URL (ESTO YA ESTABA)
@@ -198,33 +269,25 @@
                         timer: 1500,
                         showConfirmButton: false
                     });
-                    // Mi adición: Re-renderiza la tarjeta específica para mostrar la foto.
-                    // No es una re-renderización completa de todas las tarjetas.
-                    // Para hacer esto, necesito una referencia a la tarjeta o al input de archivo original.
-                    // Una forma sencilla es simplemente actualizar la imagen src.
 
-                    // Encuentro la tarjeta del alumno que acaba de ser modificada
-                    const updatedCard = document.querySelector(`.card .name`); // Busca por el nombre del alumno
-                    // Idealmente, deberíamos buscar por un ID único en la tarjeta
-                    if (updatedCard) {
-                        // Obtengo el div.photo dentro de esa tarjeta
-                        const photoDiv = updatedCard.closest('.card').querySelector('.photo');
+                    const updatedCardElement = document.querySelector(`.card .name`);
+                    if (updatedCardElement && updatedCardElement.textContent === alumnoNombre) {
+                        const photoDiv = updatedCardElement.closest('.card').querySelector('.photo');
                         if (photoDiv) {
                             let imgElement = photoDiv.querySelector('img');
                             const initialsSpan = photoDiv.querySelector('.initials');
 
                             if (imgElement) {
                                 imgElement.src = base64Image;
-                                imgElement.style.display = 'block'; // Asegura que la imagen sea visible
+                                imgElement.style.display = 'block';
                             } else {
-                                // Si no hay <img>, lo creo
                                 imgElement = document.createElement('img');
                                 imgElement.src = base64Image;
                                 imgElement.alt = `Foto de ${alumnoNombre}`;
                                 photoDiv.appendChild(imgElement);
                             }
                             if (initialsSpan) {
-                                initialsSpan.style.display = 'none'; // Oculta las iniciales
+                                initialsSpan.style.display = 'none';
                             }
                         }
                     }
@@ -238,45 +301,34 @@
         }
 
         // Función para generar las tarjetas de alumnos
-        // Mi modificación: Ahora recibe 'alumnos' que es un array de objetos (con nombre y posible fotoUrl)
-        // y 'asistenciaPrevia' para precargar los estados de los radios.
-        function generarTarjetasAlumnos(alumnos, asistenciaPrevia = [], claseId) { // Mi adición: Pasamos claseId
+        function generarTarjetasAlumnos(alumnos, asistenciaPrevia = [], claseId) {
             const container = document.getElementById('listaAlumnosContainer');
             container.innerHTML = '';
 
-            alumnos.forEach((alumnoObj, index) => { // Mi modificación: Cambio 'alumno' a 'alumnoObj' para reflejar que es un objeto.
+            alumnos.forEach((alumnoObj, index) => {
                 const card = document.createElement('div');
                 card.className = 'card';
 
-                // Mi adición: Obtengo el nombre del alumno desde el objeto alumnoObj.
                 const alumnoNombre = typeof alumnoObj === 'object' ? alumnoObj.nombre : alumnoObj;
 
-                // Mi adición: Determinar el estado previo del alumno si existe en la asistencia ya guardada.
                 const alumnoEnRegistroPrevio = asistenciaPrevia.find(
-                    a => a.nombre === alumnoNombre // Mi modificación: Busco por nombre de alumno.
+                    a => a.nombre === alumnoNombre
                 );
-                const estadoPrevio = alumnoEnRegistroPrevio ? alumnoEnRegistroPrevio.estado : null; // 'Presente', 'Ausente', 'Tardanza' o null
+                const estadoPrevio = alumnoEnRegistroPrevio ? alumnoEnRegistroPrevio.estado : null;
 
-                // Mi adición: Variables para controlar qué radio button debe estar 'checked'.
                 let checkedP = estadoPrevio === 'Presente' ? 'checked' : '';
                 let checkedA = estadoPrevio === 'Ausente' ? 'checked' : '';
                 let checkedT = estadoPrevio === 'Tardanza' ? 'checked' : '';
 
-                // Mi adición: Si el alumno no tiene un estado previo definido (ej. es un nuevo alumno en la clase o no estaba en el registro guardado),
-                // lo marcamos como 'Ausente' por defecto en la UI al cargar.
+                // MI MODIFICACIÓN: Si el alumno no tiene un estado previo definido, lo marcamos como 'Ausente' por defecto.
                 if (estadoPrevio === null) {
-                    checkedA = 'checked'; // Por defecto, si no hay estado previo, el alumno se marca como Ausente.
+                    checkedA = 'checked';
                 }
 
-                // Mi adición: Lógica para obtener las iniciales del alumno.
-                const iniciales = alumnoNombre.split(' ').map(n => n[0]).join('').substring(0, 2); // Toma las primeras 2 iniciales del nombre.
+                const iniciales = alumnoNombre.split(' ').map(n => n[0]).join('').substring(0, 2);
 
-                // Mi adición: Determino si hay una foto URL para el alumno.
-                // Asumo que alumnoObj podría tener una propiedad 'fotoUrl'.
                 const fotoUrl = typeof alumnoObj === 'object' && alumnoObj.fotoUrl ? alumnoObj.fotoUrl : '';
 
-                // Mi adición: Construyo el HTML para la sección de la foto (imagen o iniciales).
-                // Incluyo el input type="file" oculto dentro del div.photo.
                 const fotoHtml = fotoUrl ? `<img src="${fotoUrl}" alt="Foto de ${alumnoNombre}">` : `<span class="initials">${iniciales}</span>`;
 
 
@@ -287,7 +339,8 @@
                             id="upload-input-${claseId}-${index}" style="display:none;">
                 </div>
                 <div class="card-content">
-                    <div class="name">${alumnoNombre}</div> <div class="radios">
+                    <div class="name">${alumnoNombre}</div>
+                    <div class="radios">
                         <div class="radio-group">
                             <label for="alumno${index}_p">P</label>
                             <input type="radio" id="alumno${index}_p" name="asistencia${index}" value="P" ${checkedP}>
@@ -305,13 +358,12 @@
                 `;
                 container.appendChild(card);
 
-                // Mi adición: Agrego los event listeners DESPUÉS de que el elemento ha sido añadido al DOM.
                 const photoDiv = document.getElementById(`photo-${claseId}-${index}`);
                 const uploadInput = document.getElementById(`upload-input-${claseId}-${index}`);
 
                 if (photoDiv && uploadInput) {
                     photoDiv.addEventListener('click', () => {
-                        uploadInput.click(); // Mi estilo: Simula un clic en el input de archivo oculto.
+                        uploadInput.click();
                     });
 
                     uploadInput.addEventListener('change', (event) => {
@@ -320,75 +372,65 @@
                             const reader = new FileReader();
                             reader.onload = (e) => {
                                 const base64Image = e.target.result;
-                                // Mi adición: Llamo a la función para guardar la foto en localStorage.
                                 handlePhotoUpload(alumnoNombre, base64Image, claseId);
-
-                                // Mi adición: Actualizo la imagen en la tarjeta sin necesidad de re-renderizar todo.
                                 const imgElement = photoDiv.querySelector('img');
                                 const initialsSpan = photoDiv.querySelector('.initials');
 
                                 if (imgElement) {
-                                    imgElement.src = base64Image; // Actualiza la fuente de la imagen existente.
-                                    imgElement.style.display = 'block'; // Asegura que la imagen esté visible.
+                                    imgElement.src = base64Image;
+                                    imgElement.style.display = 'block';
                                 } else {
-                                    // Si no existe una etiqueta img, la creo y la añado.
                                     const newImg = document.createElement('img');
                                     newImg.src = base64Image;
                                     newImg.alt = `Foto de ${alumnoNombre}`;
                                     photoDiv.appendChild(newImg);
                                 }
                                 if (initialsSpan) {
-                                    initialsSpan.style.display = 'none'; // Oculta las iniciales.
+                                    initialsSpan.style.display = 'none';
                                 }
                             };
-                            reader.readAsDataURL(file); // Mi estilo: Lee el archivo como una URL Base64.
+                            reader.readAsDataURL(file);
                         }
                     });
                 }
             });
         }
 
-        // MI ADICIÓN: Función para inicializar el texto del botón al cargar la página
-        function inicializarBotonMarcarTodos() {
-            const botonTodos = document.getElementById('btnMarcarTodos');
-            if (botonTodos) {
-                // Si proximaAccionSeraMarcarPresentes es true, el botón dirá "TODOS AUSENTES" (porque al clicar se pondrán ausentes).
-                // Si proximaAccionSeraMarcarPresentes es false, el botón dirá "TODOS PRESENTES" (porque al clicar se pondrán presentes).
-                botonTodos.innerHTML = proximaAccionSeraMarcarPresentes ? 'TODOS<br>AUSENTES' : 'TODOS<br>PRESENTES';
+        // MI ADICIÓN: Función para manejar el clic del botón "TODOS PRESENTES / TODOS AUSENTES"
+        function toggleMarcarTodos() {
+            const btnToggleTodos = document.getElementById('btnToggleTodos');
+
+            if (esEstadoActualTodosPresentes) { // Si el estado actual es "todos Presentes", la próxima acción es Ausentes.
+                marcarAlumnosComo('A'); // Marcar a todos Ausentes
+                btnToggleTodos.innerHTML = 'TODOS<br>PRESENTES'; // Actualiza el texto para la próxima acción
+                btnToggleTodos.classList.remove('ausente'); // Remueve la clase para el estilo rojo (vuelve a verde)
+                esEstadoActualTodosPresentes = false; // Actualiza el estado
+            } else { // Si el estado actual es "todos Ausentes" (o es el inicio), la próxima acción es Presentes.
+                marcarAlumnosComo('P'); // Marcar a todos Presentes
+                btnToggleTodos.innerHTML = 'TODOS<br>AUSENTES'; // Actualiza el texto para la próxima acción
+                btnToggleTodos.classList.add('ausente'); // Añade la clase para el estilo rojo
+                esEstadoActualTodosPresentes = true; // Actualiza el estado
             }
         }
 
-        // MI ADICIÓN: Función que encapsula la lógica del botón "Marcar Todos"
-        function manejarBotonMarcarTodos() {
-            // Si la próxima acción es marcar presentes, entonces el valor a aplicar es 'P'
-            // De lo contrario, el valor a aplicar es 'A'
-            const valorAMarcar = proximaAccionSeraMarcarPresentes ? 'P' : 'A';
-            marcarTodos(valorAMarcar);
-        }
 
-        // ✅ Marca todos los radios con un valor dado (P, A o T)
-        function marcarTodos(valor) {
+        // MI ADICIÓN: Función separada para marcar todos los alumnos (P, A o T)
+        function marcarAlumnosComo(valor) {
             const radios = document.querySelectorAll('input[type="radio"]');
-            radios.forEach(radio => radio.checked = (radio.value === valor));
-
-            // Mi modificación: Actualizar el estado de la próxima acción y el texto del botón
-            const botonTodos = document.getElementById('btnMarcarTodos');
-            if (botonTodos) {
-                proximaAccionSeraMarcarPresentes = !proximaAccionSeraMarcarPresentes; // Invierte el estado para la próxima vez
-                botonTodos.innerHTML = proximaAccionSeraMarcarPresentes ? 'TODOS<br>AUSENTES' : 'TODOS<br>PRESENTES';
-            }
+            radios.forEach(radio => {
+                if (radio.value === valor) {
+                    radio.checked = true;
+                }
+            });
         }
 
 
         // Función principal al cargar la página
-        document.addEventListener('DOMContentLoaded', async () => { // Mi modificación: Hago la función asíncrona para usar await
+        document.addEventListener('DOMContentLoaded', async () => {
             const claseId = getQueryParam('claseId');
-            const fechaParam = getQueryParam('fecha'); // Mi adición: Obtengo el parámetro de fecha de la URL
+            const fechaParam = getQueryParam('fecha');
 
-            // Mi adición: Almaceno el ID de clase en la variable global.
             currentClaseId = claseId;
-            // Mi adición: Almaceno la fecha de asistencia en la variable global si estamos en modo edición.
-            // Si no hay fechaParam, currentAttendanceDate seguirá siendo null o se actualizará más abajo.
             currentAttendanceDate = fechaParam;
 
             if (!claseId) {
@@ -419,33 +461,26 @@
                 return;
             }
 
-            // Mi adición: Aseguro que clase.alumnos sea un array de objetos.
-            // Esto es crucial para manejar la fotoUrl y compatibilidad con nombres simples.
             clase.alumnos = clase.alumnos.map(alumno => {
                 if (typeof alumno === 'string') {
-                    return { nombre: alumno, fotoUrl: '' }; // Convertir string a objeto con fotoUrl vacía.
+                    return { nombre: alumno, fotoUrl: '' };
                 }
-                return alumno; // Ya es un objeto, lo devuelvo tal cual.
+                return alumno;
             });
-
 
             document.getElementById('tituloClase').textContent = `${clase.nombre} - ${clase.curso}`;
 
-            // Mi modificación: Lógica para cargar asistencia existente o iniciar una nueva.
-            let asistenciaACargar = []; // Almacenará los datos de asistencia para precargar los radios.
-            let fechaMostrar = new Date(); // Por defecto, la fecha de hoy para un nuevo registro.
+            let asistenciaACargar = [];
+            let fechaMostrar = new Date();
 
             if (fechaParam) {
-                // Mi adición: Si hay un parámetro de fecha, intentamos cargar la asistencia para esa fecha.
-                const claveRegistro = `asistencia_${claseId}_${fechaParam.replace(/-/g, '_')}`; // Formato de clave YYYY_MM_DD
+                const claveRegistro = `asistencia_${claseId}_${fechaParam.replace(/-/g, '_')}`;
                 const registroGuardado = localStorage.getItem(claveRegistro);
 
                 if (registroGuardado) {
-                    // Mi adición: Si encontramos un registro, lo cargamos.
                     asistenciaACargar = JSON.parse(registroGuardado);
-                    fechaMostrar = fechaParam; // Mi adición: Usamos la fecha del parámetro para el título y la lógica.
-                    // Mi adición: Aviso al usuario que está en modo edición.
-                    await Swal.fire({ // Mi modificación: Uso await para esperar que el usuario vea este mensaje.
+                    fechaMostrar = fechaParam;
+                    await Swal.fire({
                         icon: 'info',
                         title: 'Modo Edición',
                         text: `Cargando asistencia del ${formatearFecha(fechaParam)} para editar.`,
@@ -453,46 +488,60 @@
                         showConfirmButton: false
                     });
                 } else {
-                    // Mi adición: Si no se encuentra un registro para la fecha especificada, avisamos.
-                    await Swal.fire({ // Mi modificación: Uso await para esperar que el usuario vea este mensaje.
+                    await Swal.fire({
                         icon: 'warning',
                         title: 'Registro no encontrado',
                         text: `No se encontró un registro de asistencia para la fecha ${formatearFecha(fechaParam)}. Se iniciará un nuevo registro para esa fecha.`,
                         confirmButtonText: 'Entendido'
                     });
-                    fechaMostrar = fechaParam; // Mi adición: Sigo usando la fecha del parámetro para el título, pero los radios estarán por defecto (ausente).
+                    fechaMostrar = fechaParam;
                 }
             } else {
-                // Mi adición: Si no hay fecha en el parámetro URL, significa que es un nuevo registro para hoy.
-                // Compruebo si ya existe un registro para hoy para esa clase.
                 const todayFormatted = new Date().toISOString().split('T')[0].replace(/-/g, '_');
                 const todayKey = `asistencia_${claseId}_${todayFormatted}`;
                 const todayRecord = localStorage.getItem(todayKey);
 
                 if (todayRecord) {
-                    // Mi adición: Si ya hay un registro de hoy, lo cargo para edición.
-                    await Swal.fire({ // Mi modificación: Uso await para esperar que el usuario vea este mensaje.
+                    await Swal.fire({
                         icon: 'info',
                         title: 'Registro de Hoy',
                         text: 'Ya existe un registro de asistencia para hoy. Se cargará para edición.',
                         confirmButtonText: 'Entendido'
                     });
                     asistenciaACargar = JSON.parse(todayRecord);
-                    fechaMostrar = new Date(); // Mi adición: Muestra la fecha de hoy.
-                    currentAttendanceDate = todayFormatted; // Mi adición: Actualizo la variable global con la fecha de hoy formateada.
+                    fechaMostrar = new Date();
+                    currentAttendanceDate = todayFormatted;
                 }
-                // Si no hay fecha en URL y no hay registro de hoy, asistenciaACargar queda [] y fechaMostrar es new Date(),
-                // lo que inicia un nuevo registro vacío para hoy.
             }
 
-            // Mi modificación: Muestro la fecha correcta en la UI.
             document.getElementById('fechaActual').textContent = formatearFecha(fechaMostrar);
-            // Mi modificación: Paso la lista de alumnos de la clase y la asistencia guardada (si la hay) a la función que genera las tarjetas.
-            generarTarjetasAlumnos(clase.alumnos, asistenciaACargar, claseId); // Mi adición: Paso claseId aquí.
+            generarTarjetasAlumnos(clase.alumnos, asistenciaACargar, claseId);
 
-            // MI ADICIÓN: Inicializa el texto del botón "Marcar Todos" después de cargar los alumnos
-            // y sus estados iniciales. Esto asegura que el botón muestre la acción correcta desde el principio.
-            inicializarBotonMarcarTodos();
+            // MI ADICIÓN: Inicializa el estado del botón "TODOS PRESENTES/AUSENTES" al cargar la página
+            const btnToggleTodos = document.getElementById('btnToggleTodos');
+            if (btnToggleTodos) {
+                // Contar cuántos están Presentes para decidir el estado inicial del botón
+                const numPresentesEnCarga = asistenciaACargar.filter(a => a.estado === 'Presente').length;
+
+                // Si la mayoría de los alumnos ya están marcados como Presentes,
+                // asumimos que el estado actual es "todos presentes" y el botón debería decir "TODOS AUSENTES"
+                if (numPresentesEnCarga > (clase.alumnos.length / 2) && clase.alumnos.length > 0) {
+                    esEstadoActualTodosPresentes = true; // Se asume que YA están todos Presentes
+                    btnToggleTodos.innerHTML = 'TODOS<br>AUSENTES'; // El botón ahora propone la acción inversa
+                    btnToggleTodos.classList.add('ausente'); // Aplica el estilo rojo
+                } else {
+                    // Por defecto, o si la mayoría son ausentes, el botón dirá "TODOS PRESENTES"
+                    esEstadoActualTodosPresentes = false; // Se asume que NO están todos Presentes
+                    btnToggleTodos.innerHTML = 'TODOS<br>PRESENTES'; // El botón propone marcar Presentes
+                    btnToggleTodos.classList.remove('ausente'); // Asegura el estilo verde
+                }
+            }
+
+            // MI ADICIÓN: Aplicar la animación al botón GUARDAR REGISTRO al cargar
+            const btnGuardarRegistro = document.getElementById('btnGuardarRegistro');
+            if (btnGuardarRegistro) {
+                btnGuardarRegistro.classList.add('shining');
+            }
         });
 
 
@@ -501,14 +550,12 @@
             const radios = document.querySelectorAll('input[type="radio"]');
             const grupos = {};
 
-            // Agrupar por name (cada grupo representa un alumno) (ESTO YA ESTABA)
             radios.forEach(radio => {
                 const name = radio.name;
                 if (!grupos[name]) grupos[name] = [];
                 grupos[name].push(radio);
             });
 
-            // Para cada grupo (alumno), si no está marcado ni P ni T, marcar A (ESTO YA ESTABA)
             Object.values(grupos).forEach(grupo => {
                 const algunoMarcado = grupo.find(r => r.checked && (r.value === "P" || r.value === "T"));
                 if (!algunoMarcado) {
@@ -517,9 +564,7 @@
                 }
             });
 
-            // Guardar el registro y luego mostrar SweetAlert (ESTO YA ESTABA)
             guardarAsistencia();
-            // La redirección se hará dentro de guardarAsistencia() ahora
         }
 
         // Volver a la página de clases (ya no se llama directamente desde cerrarRegistro) (ESTO YA ESTABA)
@@ -528,8 +573,7 @@
         }
 
         // Guardar la asistencia en localStorage
-        async function guardarAsistencia() { // Mi modificación: Hago la función asíncrona para SweetAlert
-            // Mi modificación: Uso la variable global currentClaseId
+        async function guardarAsistencia() {
             if (!currentClaseId) {
                 Swal.fire({
                     icon: 'error',
@@ -542,18 +586,13 @@
                 return;
             }
 
-            // Mi modificación: Si estamos editando, uso la fecha de la variable global currentAttendanceDate.
-            // Si no, uso la fecha actual para un nuevo registro.
             const fecha = currentAttendanceDate || new Date().toISOString().split('T')[0].replace(/-/g, '_');
             const registros = [];
 
-            // Recorrer todas las tarjetas de alumnos (ESTO YA ESTABA)
             document.querySelectorAll('.card').forEach((card, index) => {
                 const nombre = card.querySelector('.name').textContent;
-                // Obtener el estado seleccionado (P, A o T) (ESTO YA ESTABA)
                 const estado = card.querySelector(`input[name="asistencia${index}"]:checked`)?.value || 'A';
 
-                // Convertir P, A, T a Presente, Ausente, Tardanza para legibilidad en registros (ESTO YA ESTABA)
                 let estadoCompleto;
                 switch (estado) {
                     case 'P':
@@ -566,19 +605,16 @@
                         estadoCompleto = 'Tardanza';
                         break;
                     default:
-                        estadoCompleto = 'Desconocido'; // Por si acaso
+                        estadoCompleto = 'Desconocido';
                 }
 
                 registros.push({ nombre, estado: estadoCompleto });
             });
 
-            // Guardar en localStorage con clave única
-            // Mi modificación: Uso la variable global currentClaseId y la fecha determinada.
             const clave = `asistencia_${currentClaseId}_${fecha}`;
             localStorage.setItem(clave, JSON.stringify(registros));
 
-            // MODIFICACIÓN: Mostrar mensaje de éxito con SweetAlert2
-            await Swal.fire({ // Mi modificación: Uso await para esperar que el usuario cierre la alerta
+            await Swal.fire({
                 title: 'Registro Guardado',
                 text: `Asistencia del ${formatearFecha(fecha)} guardada correctamente.`,
                 icon: 'success',
@@ -586,11 +622,9 @@
                 showConfirmButton: false,
                 allowOutsideClick: false
             });
-            // Mi adición: Ahora la redirección ocurre solo después de que el usuario cierre la alerta.
             volverAClases();
         }
     </script>
 </body>
 
 </html>
-```
