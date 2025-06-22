@@ -54,7 +54,7 @@ function crearAlumno(nombre) {
     const btnEliminar = document.createElement('button');
     btnEliminar.title = "Eliminar alumno";
     const iconoEliminar = document.createElement('img');
-    iconoEliminar.src = './img/Vector.png';
+    iconoEliminar.src = 'Vector.ico';
     iconoEliminar.alt = 'Eliminar';
     iconoEliminar.style.width = '20px';
     iconoEliminar.style.height = '20px';
@@ -154,7 +154,7 @@ function restaurarVista(span, input, btnAceptar, btnCancelar) {
     const btnEliminar = document.createElement('button');
     btnEliminar.title = "Eliminar alumno";
     const iconoEliminar = document.createElement('img');
-    iconoEliminar.src = './img/Vector.png';
+    iconoEliminar.src = 'Vector.ico';
     iconoEliminar.alt = 'Eliminar';
     iconoEliminar.style.width = '20px';
     iconoEliminar.style.height = '20px';

@@ -129,7 +129,7 @@
         <a href="clases.html" class="back-arrow">&larr;</a>
         <h1>Crear Nueva Clase </h1>
         <button class="delete-class-button" id="btnEliminarClase">
-            <img src="Vector.png" alt="Eliminar Clase">
+            <img src="Vector.ico" alt="Eliminar Clase">
         </button>
     </div>
 
@@ -323,16 +323,35 @@
             const btnEliminar = document.createElement('button');
             btnEliminar.title = "Eliminar alumno";
             const iconoEliminar = document.createElement('img');
-            iconoEliminar.src = 'Vector.png';
+            iconoEliminar.src = 'Vector.ico';
             iconoEliminar.alt = 'Eliminar';
             iconoEliminar.style.width = '20px';
             iconoEliminar.style.height = '20px';
             btnEliminar.appendChild(iconoEliminar);
 
+            // MI MODIFICACIÓN: Añadir confirmación con SweetAlert2 al eliminar alumno
             btnEliminar.onclick = () => {
-                alumnosTemp.splice(index, 1);
-                actualizarListaUI();
-                isDirty = true;
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: `¿Quieres eliminar a "${nombre}" de la clase?`, // Muestra el nombre del alumno
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        alumnosTemp.splice(index, 1);
+                        actualizarListaUI();
+                        isDirty = true;
+                        Swal.fire(
+                            '¡Eliminado!',
+                            'El alumno ha sido eliminado.',
+                            'success'
+                        );
+                    }
+                });
             };
 
             acciones.appendChild(btnEditar);
@@ -469,7 +488,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Error al guardar',
-                    text: 'El nombre de la clase no puede exceder 30 caracteres y el curso no puede exceder 15 caracteres.'
+                    text: 'El nombre de la clase no puede exceder 70 caracteres y el curso no puede exceder 15 caracteres.' // Texto actualizado para coincidir con maxlen en HTML
                 });
                 return; // No guardar si los campos de clase/curso exceden
             }
@@ -530,7 +549,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Error al salir',
-                    text: 'Corrige el nombre de la clase (máx. 30 caracteres) y/o el curso (máx. 15 caracteres) antes de salir.'
+                    text: 'Corrige el nombre de la clase (máx. 70 caracteres) y/o el curso (máx. 15 caracteres) antes de salir.' // Texto actualizado
                 });
                 e.preventDefault(); // Evita que se abra el modal de salir o que se salga
                 return;
@@ -586,6 +605,7 @@
                     }
 
                     let alumnosImportados = [];
+                    let nombresLargosEncontrados = false; // Bandera para detectar nombres largos
                     // Asumimos que los nombres de los alumnos están en la primera columna (índice 0)
                     // Saltamos la primera fila si es un encabezado (ej. "Nombre de Alumno")
                     for (let i = 0; i < json.length; i++) {
@@ -597,49 +617,47 @@
                                 alumnosImportados.push(alumnoNombre);
                             } else { // Mi modificación: Notifica al usuario sobre nombres demasiado largos
                                 console.warn(`Alumno "${alumnoNombre}" ignorado por exceder los 50 caracteres.`);
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'Nombres de alumnos largos ignorados',
-                                    text: `Se encontraron algunos alumnos con nombres que exceden los 50 caracteres y fueron ignorados durante la importación.`
-                                });
+                                nombresLargosEncontrados = true; // Marca que se encontró un nombre largo
                             }
                         }
-                        // FIN DE MODIFICACIÓN
                     }
 
-                    if (alumnosImportados.length > 0) {
-                        alumnosTemp = [...new Set([...alumnosTemp, ...alumnosImportados])]; // Agrega y elimina duplicados
-                        actualizarListaUI();
-                        isDirty = true;
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Importación Exitosa!',
-                            text: `${alumnosImportados.length} alumnos importados.`,
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    } else {
+                    // Si se encontraron nombres largos, muestra la alerta una sola vez después del bucle
+                    if (nombresLargosEncontrados) {
                         Swal.fire({
                             icon: 'warning',
-                            title: '¡Importación Parcial!',
-                            text: 'No se encontraron nombres de alumnos válidos o con longitud aceptable en la primera columna del archivo.', // Mensaje más claro
+                            title: 'Nombres de alumnos largos ignorados',
+                            text: `Se encontraron algunos alumnos con nombres que exceden los 50 caracteres y fueron ignorados durante la importación.`
+                        });
+                    }
+                    // FIN DE MODIFICACIÓN
+
+                    // Solo añade los alumnos importados si la importación fue exitosa (sin errores críticos)
+                    if (alumnosImportados.length > 0) {
+                        alumnosTemp = [...alumnosTemp, ...alumnosImportados];
+                        actualizarListaUI();
+                        isDirty = true; // Marca que hay cambios pendientes
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Importación Completa!',
+                            text: `Se han importado ${alumnosImportados.length} alumnos correctamente.`,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else if (!nombresLargosEncontrados && json.length > 0) { // Si no se importó nada y el archivo no estaba vacío
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'No se importaron alumnos',
+                            text: 'No se encontraron nombres de alumnos válidos en el archivo.'
                         });
                     }
                 };
-
-                reader.onerror = (error) => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error al leer el archivo',
-                        text: 'Hubo un problema al cargar el archivo. Inténtalo de nuevo.'
-                    });
-                    console.error('Error al leer el archivo:', error);
-                };
-
-                reader.readAsArrayBuffer(file); // Lee el archivo como un ArrayBuffer para SheetJS
+                reader.readAsArrayBuffer(file);
             }
         });
         // FIN NUEVA ADICIÓN
+
+        // FIN DE JS ORIGINAL
     </script>
 </body>
 
